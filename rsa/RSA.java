@@ -7,15 +7,17 @@ public class RSA {
         BigInteger n = p.multiply(q) ;
         //fy为欧拉函数=(p-1)(q-1)
         BigInteger fy = p.subtract(BigInteger.ONE).multiply(q.subtract(BigInteger.ONE)) ;
-        BigInteger e = new BigInteger("65537") ;
+        BigInteger e = new BigInteger("3889") ;
         BigInteger a = e ;
         BigInteger b = fy ;
         BigInteger[] rxy = new GCD().extGcd(a, b) ;
         BigInteger r = rxy[0] ;
         BigInteger x = rxy[1] ;
         BigInteger y = rxy[2] ;
-
         BigInteger d = x ;
+        if(d.compareTo(BigInteger.ZERO) == -1){
+            d = d.add(fy);
+        }
         // 公钥  私钥
         return new BigInteger[][]{{n , e}, {n , d}} ;
     }
