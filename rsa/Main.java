@@ -13,18 +13,36 @@ public class Main {
 
     public static void main(String[] args) {
 
+        long startTime=System.currentTimeMillis();
         Random random = new Random();
-        BigInteger pp= BigInteger.probablePrime(1024,random);
+        BigInteger pp= BigInteger.probablePrime(518,random);
+        BigInteger qq= BigInteger.probablePrime(506,random);
         int count=0;
         BigInteger[] bigIntegers = new BigInteger[2];
 
-        while(count<2){
+        while(count<1){
             if(pp.isProbablePrime(100)){
-                bigIntegers[count] = pp;
-                count++;
+                BigInteger p1 = BigInteger.ZERO;
+                p1 = p1.add(pp);
+                p1 = (p1.subtract(BigInteger.ONE)).divide(BigInteger.valueOf(2));
+                if((p1.isProbablePrime(100))){
+                    bigIntegers[count] = pp;
+                    count++;
+                }
             }
-            pp = pp.multiply(BigInteger.ONE.add(BigInteger.ONE));       //如果要p=2p+1 q=2q+1是素数，那么p，q是强素数。这里没有做此判断
-            pp=pp.nextProbablePrime();
+            pp= BigInteger.probablePrime(518,random);
+        }
+        while(count<2){
+            if(qq.isProbablePrime(100)){
+                BigInteger q1 = BigInteger.ZERO;
+                q1 = q1.add(qq);
+                q1 = (q1.subtract(BigInteger.ONE)).divide(BigInteger.valueOf(2));
+                if((q1.isProbablePrime(100))){
+                    bigIntegers[count] = qq;
+                    count++;
+                }
+            }
+            qq= BigInteger.probablePrime(506,random);
         }
         // 公钥私钥中用到的两个大质数p,q
         BigInteger p = bigIntegers[0];
@@ -42,7 +60,6 @@ public class Main {
         BigInteger m = Convert.StringToBig(text);
         System.out.println("被加密信息经过base64转换后：" + m);
         // 加密
-        long startTime=System.currentTimeMillis();
         BigInteger c = rsa.encrypt(m, pubkey) ;
         System.out.println("密文：" + c);
         // 解密
