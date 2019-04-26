@@ -1,9 +1,62 @@
 package com.company.rsa;
 
 import java.math.BigInteger;
+import java.util.Random;
 
 public class RSA {
-    public BigInteger[][] genKey(BigInteger p, BigInteger q){
+
+    private static int P_length = 122;
+    private static int Q_length = 134;
+    private static int N = P_length+Q_length;
+
+    private static BigInteger p;
+    private static BigInteger q;
+
+    private static BigInteger[][] keys;
+    private static BigInteger[] pubkey;
+    private static BigInteger[] selfkey;
+
+
+    public RSA(){
+        Random random = new Random();
+        BigInteger pp= BigInteger.probablePrime(P_length,random);
+        BigInteger qq= BigInteger.probablePrime(Q_length,random);
+        int count=0;
+        BigInteger[] bigIntegers = new BigInteger[2];
+
+        while(count<1){
+            if(pp.isProbablePrime(100)){
+                BigInteger p1 = BigInteger.ZERO;
+                p1 = p1.add(pp);
+                p1 = (p1.subtract(BigInteger.ONE)).divide(BigInteger.valueOf(2));
+                if((p1.isProbablePrime(100))){
+                    bigIntegers[count] = pp;
+                    count++;
+                }
+            }
+            pp= BigInteger.probablePrime(P_length,random);
+        }
+        while(count<2){
+            if(qq.isProbablePrime(100)){
+                BigInteger q1 = BigInteger.ZERO;
+                q1 = q1.add(qq);
+                q1 = (q1.subtract(BigInteger.ONE)).divide(BigInteger.valueOf(2));
+                if((q1.isProbablePrime(100))){
+                    bigIntegers[count] = qq;
+                    count++;
+                }
+            }
+            qq= BigInteger.probablePrime(Q_length,random);
+        }
+        // 公钥私钥中用到的两个大质数p,q
+        p = bigIntegers[0];
+        q = bigIntegers[1];
+        keys = genKey() ;
+        pubkey  = keys[0] ;
+        selfkey = keys[1] ;
+    }
+
+    public BigInteger[][] genKey(){
         BigInteger n = p.multiply(q) ;
         //fy为欧拉函数=(p-1)(q-1)
         BigInteger fy = p.subtract(BigInteger.ONE).multiply(q.subtract(BigInteger.ONE)) ;
@@ -24,15 +77,18 @@ public class RSA {
 
     /**
      * 加密
-     * @param m 被加密的信息转化成为大整数m
+     * @param m 被加密的信息转化成为大整数，再分割为数组m
      * @param pubkey 公钥
      */
-    public BigInteger encrypt(BigInteger m, BigInteger[] pubkey){
+    public String encrypt(BigInteger[] m, BigInteger[] pubkey){
         BigInteger n = pubkey[0] ;
         BigInteger e = pubkey[1] ;
         Exponentiation exponentiation = new Exponentiation();
-        BigInteger c = exponentiation.expMode(m, e, n) ;
-        return c ;
+        BigInteger[] c = new BigInteger[m.length];
+        for(int i=0; i<m.length; i++){
+            c[i] = exponentiation.expMode(m[i], e, n) ;
+        }
+        return Convert.BigToStringWithoutAscll(c);
     }
 
     /**
@@ -40,12 +96,15 @@ public class RSA {
      * @param c
      * @param selfkey 私钥
      */
-    public BigInteger decrypt(BigInteger c, BigInteger[] selfkey){
+    public String decrypt(BigInteger[] c, BigInteger[] selfkey){
         BigInteger n = selfkey[0] ;
         BigInteger d = selfkey[1] ;
         Exponentiation exponentiation = new Exponentiation();
-        BigInteger m = exponentiation.expMode(c, d, n) ;
-        return m ;
+        BigInteger[] m = new BigInteger[c.length];
+        for(int i=0; i<m.length; i++){
+            m[i] = exponentiation.expMode(c[i], d, n) ;
+        }
+        return Convert.BigToString(m);
     }
 
     /**
@@ -62,7 +121,7 @@ public class RSA {
     }
 
     /**
-     * 加密
+     * 验证
      * @param s 签名
      * @param pubkey 公钥
      */
@@ -74,4 +133,49 @@ public class RSA {
         return v ;
     }
 
+
+    /**
+     * 加密
+     * @param message 原文
+     */
+    public String encrypt_string(String message){
+        BigInteger[] m = Convert.StringToBig(message,N/8-11);     //num = N/8-11   ，那么每次能够加密的数据为num个字符
+        // 加密
+        String result = encrypt(m, pubkey);
+        return result;
+    }
+
+    /**
+     * 解密
+     * @param message 密文
+     */
+    public String decrypt_string(String message){
+        BigInteger[] info = Convert.StringToBigWithoutAscll(message);
+        String result = decrypt(info, selfkey);
+        return result;
+    }
+
+    /**
+     * 签名
+     * @param message 消息
+     */
+    public String sign_string(String message){
+        BigInteger hm = BigInteger.valueOf(message.hashCode() & Integer.MAX_VALUE);
+        hm = sign(hm,selfkey);
+        BigInteger[] bigIntegers = new BigInteger[1];
+        bigIntegers[0] = hm;
+        return Convert.BigToStringWithoutAscll(bigIntegers);
+    }
+
+    /**
+     * 验证
+     * @param message 签名
+     */
+    public String verify_string(String message){
+        BigInteger[] s = Convert.StringToBigWithoutAscll(message);
+        BigInteger v = verify(s[0],pubkey);
+        BigInteger[] bigIntegers = new BigInteger[1];
+        bigIntegers[0] = v;
+        return Convert.BigToStringWithoutAscll(bigIntegers);
+    }
 }

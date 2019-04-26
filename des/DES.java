@@ -1,5 +1,6 @@
 package com.company.des;
 
+import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 import sun.security.util.BitArray;
 
 import java.io.BufferedReader;
@@ -27,7 +28,13 @@ public class DES {
 
     private int[][] sub_key = new int[16][48];
 
-    public DES(BitSet key){
+    private static BitSet key_bitset;
+
+    private static final int BITSET_SIZE = 64;
+
+    private static final int KEYBITSET_SIZE = 56;
+
+    public DES(String key){
         IP = new int[]{
                 58,50,42,34,26,18,10,2,
                 60,52,44,36,28,20,12,4,
@@ -124,7 +131,8 @@ public class DES {
                 2,8,24,14,32,27,3,9,19,13,30,6,22,11,4,25
         };
 
-        generateKey(key);
+        key_bitset = key_to_bitset(key);
+        generateKey(key_bitset);
 
         /*  //用于读取文件获取数据时初始化数组
         IP = new int[64];
@@ -137,10 +145,9 @@ public class DES {
     }
 
     public BitSet Encrypt(BitSet M_bitSet, int flag){ //flag=0 加密   flag=1 解密
-        System.out.println("里面的内容："+M_bitSet);
         //进行IP置换
-        BitSet temp = new BitSet(64);
-        for(int i=0; i<64; i++){
+        BitSet temp = new BitSet(BITSET_SIZE);
+        for(int i=0; i<BITSET_SIZE; i++){
             if(M_bitSet.get(IP[i]-1)){
                 temp.set(i);
             }
@@ -167,17 +174,17 @@ public class DES {
 
     public void L(BitSet M, int nums, int flag, int[] key){
 
-        BitSet L0 = new BitSet(32);
-        BitSet R0 = new BitSet(32);
-        BitSet L1 = new BitSet(32);
-        BitSet R1 = new BitSet(32);
-        BitSet f = new BitSet(32);
+        BitSet L0 = new BitSet(BITSET_SIZE/2);
+        BitSet R0 = new BitSet(BITSET_SIZE/2);
+        BitSet L1;
+        BitSet R1;
+        BitSet f;
         //64bit M分割为 32bit L   32bit R 两半部分
-        for(int i=0; i<32; i++){
+        for(int i=0; i<BITSET_SIZE/2; i++){
             if(M.get(i)){
                 L0.set(i);
             }
-            if(M.get(i+32)){
+            if(M.get(i+BITSET_SIZE/2)){
                 R0.set(i);
             }
         }
@@ -186,14 +193,14 @@ public class DES {
         f=F_function(R0,key);
         M.clear();   //注意，BitSet要先clear再赋值，否则会有前面的1干扰
         R1.xor(f);   //f是轮函数结果，与L0异或 得到R1
-        for(int i=0; i<32; i++){
+        for(int i=0; i<BITSET_SIZE/2; i++){
             if(((flag == 0) && (nums == 15)) || ((flag == 1)&&(nums == 0))){
                 //不交换L R
                 if(R1.get(i)){
                     M.set(i);
                 }
                 if(L1.get(i)){
-                    M.set(i+32);
+                    M.set(i+BITSET_SIZE/2);
                 }
             }else {
                 // 把L R交换送到下一轮
@@ -201,14 +208,14 @@ public class DES {
                     M.set(i);
                 }
                 if(R1.get(i)){
-                    M.set(i+32);
+                    M.set(i+BITSET_SIZE/2);
                 }
             }
         }
     }
 
     public BitSet F_function(BitSet r_content, int[] key){
-        BitSet result = new BitSet(32);  //作为一轮轮函数的输出
+        BitSet result = new BitSet(BITSET_SIZE/2);  //作为一轮轮函数的输出
         int[] temp = new int[48];
         //将32-->48 进行E扩展置换
         for(int i=0; i<48; i++){
@@ -258,57 +265,57 @@ public class DES {
 
 
     public void generateKey(BitSet key){
-        BitSet c0 = new BitSet(28);
-        BitSet d0 = new BitSet(28);
-        for(int i=0; i<28; i++){ //因为不需要PC-1来将64-->56，所以直接等分成两部分
+        BitSet c0 = new BitSet(KEYBITSET_SIZE/2);
+        BitSet d0 = new BitSet(KEYBITSET_SIZE/2);
+        for(int i=0; i<KEYBITSET_SIZE/2; i++){ //因为不需要PC-1来将64-->56，所以直接等分成两部分
             if(key.get(i)){ //左半部分 <28
                 c0.set(i);
             }
-            if(key.get(i+28)){//右半部分 >=28
+            if(key.get(i+KEYBITSET_SIZE/2)){//右半部分 >=28
                 d0.set(i);
             }
         }
         for(int i=0; i<16; i++){
-            BitSet c1 = new BitSet(28);
-            BitSet d1 = new BitSet(28);
+            BitSet c1 = new BitSet(KEYBITSET_SIZE/2);
+            BitSet d1 = new BitSet(KEYBITSET_SIZE/2);
             if(LFT[i] == 1){
-                for(int j=0; j<28; j++){ //c0向左偏移成为c1
+                for(int j=0; j<KEYBITSET_SIZE/2; j++){ //c0向左偏移成为c1
                     if(c0.get(j) && j==0){
-                        c1.set(27);
+                        c1.set(KEYBITSET_SIZE/2-1);
                     }else if(c0.get(j)){
                         c1.set(j-1);
                     }
                     if(d0.get(j) && j==0){//d0向左偏移成为d1
-                        d1.set(27);
+                        d1.set(KEYBITSET_SIZE/2-1);
                     }else if(d0.get(j)){
                         d1.set(j-1);
                     }
                 }
             }else if(LFT[i] == 2){
-                for(int j=0; j<28; j++){ //c0向左偏移成为c1
+                for(int j=0; j<KEYBITSET_SIZE/2; j++){ //c0向左偏移成为c1
                     if(c0.get(j) && j==0){
-                        c1.set(26);
+                        c1.set(KEYBITSET_SIZE/2-2);
                     }else if(c0.get(j) && j==1){
-                        c1.set(27);
+                        c1.set(KEYBITSET_SIZE/2-1);
                     }else if(c0.get(j)){
                         c1.set(j-2);
                     }
                     if(d0.get(j) && j==0){//d0向左偏移成为d1
-                        d1.set(26);
+                        d1.set(KEYBITSET_SIZE/2-2);
                     }else if(d0.get(j) && j==1){
-                        d1.set(27);
+                        d1.set(KEYBITSET_SIZE/2-1);
                     }else if(d0.get(j)){
                         d1.set(j-2);
                     }
                 }
             }//偏移完成，开始置换缩减至48bit
-            BitSet temp = new BitSet(56);
-            for(int k=0; k<28; k++){ //把c1 d1合并至56 bit 的temp
+            BitSet temp = new BitSet(KEYBITSET_SIZE);
+            for(int k=0; k<KEYBITSET_SIZE/2; k++){ //把c1 d1合并至56 bit 的temp
                 if(c1.get(k)){
                     temp.set(k);
                 }
                 if(d1.get(k)){
-                    temp.set(k+28);
+                    temp.set(k+KEYBITSET_SIZE/2);
                 }
             }
             //PC-2压缩置换
@@ -321,6 +328,357 @@ public class DES {
             }
             c0 = c1;
             d0 = d1;
+        }
+    }
+
+    public static String[] split(String text){
+        int size = text.length()/8;
+        String[] result;
+        if(size>0){
+            if(size*8 == text.length()){
+                result = new String[size];
+            }else {
+                result = new String[size+1];
+            }
+        }else {//size == 0
+            result = new String[1];
+            result[0] = text;
+            return result;
+        }
+        int i=0;
+        while (size>0){
+            result[i] = text.substring(i*8,(i+1)*8);
+            i++;
+            size--;
+        }
+        if(i*8 < text.length()){//如果多出一组大小小于N，就把这最后一组补上
+            result[i] = text.substring(i*8,text.length());
+        }
+        return result;
+    }
+
+    public static BitSet[] strings_to_bitsets(String[] message_array){//加密时调用
+        BitSet[] bitSets = new BitSet[message_array.length];
+        BitArray[] bitArrays = new BitArray[message_array.length];
+        for(int i=0; i<bitArrays.length; i++){
+            bitArrays[i] = new BitArray(message_array[i].length()*8,message_array[i].getBytes());
+            bitSets[i] = new BitSet(BITSET_SIZE);
+            for(int j=0; j<bitArrays[i].length(); j++){
+                if (bitArrays[i].get(j)){
+                    bitSets[i].set(j);
+                }
+            }
+        }
+        return bitSets;
+    }
+
+    public static BitSet[] base64strings_to_bitsets(String message){//解密时调用
+        byte[] message_bytes = Base64.decode(message);
+        int size = message_bytes.length/8;
+        byte[][] result_bytes;
+        if(size>0){
+            if(size*8 == message_bytes.length){
+                result_bytes = new byte[size][8];
+            }else {
+                result_bytes = new byte[size+1][8];
+            }
+            int i=0;
+            int k=0;
+            while (size>0){
+                for(int j=0; j<8; j++){   //按照每8个byte分组
+                    result_bytes[i][j] = message_bytes[k];
+                    k++;
+                }
+                i++;
+                size--;
+            }
+            if(i*8 < message_bytes.length){//如果多出一组大小小于N，就把这最后一组补上
+                for(int j=0; j<message_bytes.length-i*8; j++){
+                    result_bytes[i][j] = message_bytes[k];
+                    k++;
+                }
+            }
+        }else {
+            result_bytes  = new byte[1][message_bytes.length];
+            for(int i=0; i<message_bytes.length; i++){
+                result_bytes[1][i] = message_bytes[i];
+            }
+        }//至此，已经把传入的密文通过base64解码为byte数组，然后byte数组按照8个byte进行分割成二维byte数组-->result_bytes[][]
+        BitSet[] bitSets = new BitSet[result_bytes.length];
+        BitArray[] bitArrays = new BitArray[result_bytes.length];
+        for(int i=0; i<bitArrays.length; i++){
+            bitArrays[i] = new BitArray(result_bytes[i].length*8,result_bytes[i]);
+            bitSets[i] = new BitSet(BITSET_SIZE);
+            for(int j=0; j<bitArrays[i].length(); j++){
+                if (bitArrays[i].get(j)){
+                    bitSets[i].set(j);
+                }
+            }
+        }
+        return bitSets;
+    }
+
+    public static String bitsets_to_base64string(BitSet[] bitSets){//加密时调用
+        //System.out.println(bitSets[0].length());//64
+        //System.out.println(bitSets[1].length());//62
+        BitArray[] result_bitArrays = new BitArray[bitSets.length];
+        for(int i=0; i<result_bitArrays.length; i++){
+            //所以还是不能用bitset.length，直接64--> BITSET_SIZE
+            result_bitArrays[i] = new BitArray(BITSET_SIZE);
+            for(int j=0; j<BITSET_SIZE; j++){
+                if (bitSets[i].get(j)){
+                    result_bitArrays[i].set(j,true);
+                }else {
+                    result_bitArrays[i].set(j,false);
+                }
+            }
+        }
+        byte[][] result_bytes = new byte[result_bitArrays.length][];
+        for(int i=0; i<result_bitArrays.length; i++){
+            result_bytes[i] = result_bitArrays[i].toByteArray();
+        }
+        byte[] bytes = new byte[result_bytes.length*8];
+        int t = 0;
+        for(int i=0; i<result_bytes.length; i++){
+            for(int j=0; j<result_bytes[i].length; j++){
+                bytes[t] = result_bytes[i][j];
+                t++;
+            }
+        }
+        String base64 = Base64.encode(bytes);
+        return base64;
+    }
+
+    public static String bitsets_to_string(BitSet[] bitSets){//解密时调用
+        //System.out.println(bitSets[0].length());//64
+        //System.out.println(bitSets[1].length());//62
+        BitArray[] result_bitArrays = new BitArray[bitSets.length];
+        for(int i=0; i<result_bitArrays.length; i++){
+            //所以还是不能用bitset.length，直接64--> BITSET_SIZE
+            result_bitArrays[i] = new BitArray(BITSET_SIZE);
+            for(int j=0; j<BITSET_SIZE; j++){
+                if (bitSets[i].get(j)){
+                    result_bitArrays[i].set(j,true);
+                }else {
+                    result_bitArrays[i].set(j,false);
+                }
+            }
+        }
+        byte[][] result_bytes = new byte[result_bitArrays.length][];
+        StringBuilder stringBuilder = new StringBuilder();
+        for(int i=0; i<result_bitArrays.length; i++){
+            result_bytes[i] = result_bitArrays[i].toByteArray();
+            for(int j=0; j<result_bytes[i].length; j++){
+                stringBuilder.append((char)result_bytes[i][j]);
+            }
+        }
+        return stringBuilder.toString();
+    }
+
+    public static BitSet key_to_bitset(String key){
+        BitArray bitArraykey = new BitArray(KEYBITSET_SIZE,key.getBytes());
+        BitSet key_bit = new BitSet(KEYBITSET_SIZE);
+        for(int i=0; i<KEYBITSET_SIZE; i++){
+            if (bitArraykey.get(i)){
+                key_bit.set(i);
+            }
+        }
+        return key_bit;
+    }
+
+    public String encrypt_string(String message){
+        message = Base64.encode(message.getBytes());
+        //System.out.println("原文经过base64编码："+message);
+        //System.out.println("原文经过base64编码再转回："+ new String(Base64.decode(message)));
+        String[] message_array = DES.split(message);
+        //把String[] 转换成 2进制 的BitSet数组
+        BitSet[] M_bitSets = strings_to_bitsets(message_array);
+        BitSet[] C_bitSets = new BitSet[message_array.length];
+        for(int i=0; i<C_bitSets.length; i++){
+            C_bitSets[i] = Encrypt(M_bitSets[i],0);
+            //System.out.println(C_bitSets[i]);
+        }
+        return bitsets_to_base64string(C_bitSets);
+    }
+
+    public String decrypt_string(String message){
+        BitSet[] C_bitSets = base64strings_to_bitsets(message);
+        BitSet[] M_bitSets = new BitSet[C_bitSets.length];
+        for(int i=0; i<C_bitSets.length; i++){
+            M_bitSets[i] = Encrypt(C_bitSets[i],1);
+        }
+        String result = bitsets_to_string(M_bitSets);
+        if(result.indexOf(0) >=0){
+            result = result.substring(0,result.indexOf(0));    //这一步很重要，由于在result中含有ascll码为0的值，导致转换为byte[]时出错，所以要先剔除掉0
+        }
+        return new String(Base64.decode(result));
+    }
+
+    public int[] getIP() {
+        return IP;
+    }
+
+    public int[][][] getS() {
+        return S;
+    }
+
+    public int[] getE() {
+        return E;
+    }
+
+    public int[] getIP_1() {
+        return IP_1;
+    }
+
+    public int[] getP() {
+        return P;
+    }
+
+    public int[] getPC_1() {
+        return PC_1;
+    }
+
+    public int[] getPC_2() {
+        return PC_2;
+    }
+
+    public void setIP() {
+        /*
+        try{  //为了快，不从文件读取，直接在构造函数用数据初始化数组
+            File fileIP = new File("E:/eclipse文件/Security/src/com/company/des/IP");
+            BufferedReader br = new BufferedReader(new FileReader(fileIP));//构造一个BufferedReader类来读取文件
+            String s = null;
+            int i=0;
+            while((s = br.readLine())!=null){//使用readLine方法，一次读一行
+                String[] data = s.split(" ");
+                for (int j=0;j<8;i++,j++){
+                    IP[i] = Integer.parseInt(data[j]);
+                }
+            }
+            br.close();
+        }catch(Exception e){
+            e.printStackTrace();
+        }*/
+
+    }
+
+    public void setIP_1() {
+        try{
+            File fileIP_1 = new File("E:/eclipse文件/Security/src/com/company/des/IP-1");
+            BufferedReader br = new BufferedReader(new FileReader(fileIP_1));//构造一个BufferedReader类来读取文件
+            String s = null;
+            int i=0;
+            while((s = br.readLine())!=null){//使用readLine方法，一次读一行
+                String[] data = s.split(" ");
+                for (int j=0;j<8;i++,j++){
+                    IP_1[i] = Integer.parseInt(data[j]);
+                }
+            }
+            br.close();
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    public void setS() {
+        for (int i=0; i<8; i++){
+            for(int j=0; j<4; j++){
+                S[i][j] = new int[16];
+            }
+        }
+        try{
+            File fileS = new File("E:/eclipse文件/Security/src/com/company/des/S");
+            BufferedReader br = new BufferedReader(new FileReader(fileS));//构造一个BufferedReader类来读取文件
+            String s = null;
+            int m=0,n=0,x=0;
+            while((s = br.readLine())!=null){//使用readLine方法，一次读一行
+                String[] data = s.split(" ");
+                if(x == 4){
+                    m++;
+                    x=0;
+                }
+                for (int j=0;j<16;n++,j++){
+                    S[m][x][n] = Integer.parseInt(data[j]);
+                }
+                x++;
+                n=0;
+            }
+            br.close();
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    public void setE() {
+        try{
+            File fileE = new File("E:/eclipse文件/Security/src/com/company/des/E");
+            BufferedReader br = new BufferedReader(new FileReader(fileE));//构造一个BufferedReader类来读取文件
+            String s = null;
+            int i=0;
+            while((s = br.readLine())!=null){//使用readLine方法，一次读一行
+                String[] data = s.split(" ");
+                for (int j=0;j<6;i++,j++){
+                    E[i] = Integer.parseInt(data[j]);
+                }
+            }
+            br.close();
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    public void setPC_1() {
+        try{
+            File filePC_1 = new File("E:/eclipse文件/Security/src/com/company/des/PC-1");
+            BufferedReader br = new BufferedReader(new FileReader(filePC_1));//构造一个BufferedReader类来读取文件
+            String s = null;
+            int i=0;
+            while((s = br.readLine())!=null){//使用readLine方法，一次读一行
+                String[] data = s.split(" ");
+                for (int j=0;j<7;i++,j++){
+                    PC_1[i] = Integer.parseInt(data[j]);
+                }
+            }
+            br.close();
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    public void setPC_2() {
+        try{
+            File filePC_2 = new File("E:/eclipse文件/Security/src/com/company/des/PC-2");
+
+            BufferedReader br = new BufferedReader(new FileReader(filePC_2));//构造一个BufferedReader类来读取文件
+            String s = null;
+            int i=0;
+            while((s = br.readLine())!=null){//使用readLine方法，一次读一行
+                String[] data = s.split(" ");
+                for (int j=0;j<8;i++,j++){
+                    PC_2[i] = Integer.parseInt(data[j]);
+                }
+            }
+            br.close();
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    public void setP() {
+        try{
+            File fileP = new File("E:/eclipse文件/Security/src/com/company/des/P");
+            BufferedReader br = new BufferedReader(new FileReader(fileP));//构造一个BufferedReader类来读取文件
+            String s = null;
+            int i=0;
+            while((s = br.readLine())!=null){//使用readLine方法，一次读一行
+                String[] data = s.split(" ");
+                for (int j=0;j<16;i++,j++){
+                    P[i] = Integer.parseInt(data[j]);
+                }
+            }
+            br.close();
+        }catch(Exception e){
+            e.printStackTrace();
         }
     }
 }
