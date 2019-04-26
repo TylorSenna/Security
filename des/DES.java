@@ -357,7 +357,7 @@ public class DES {
         return result;
     }
 
-    public static BitSet[] strings_to_bitsets(String[] message_array){//加密时调用
+    public static BitSet[] strings_to_bitsets(String[] message_array){
         BitSet[] bitSets = new BitSet[message_array.length];
         BitArray[] bitArrays = new BitArray[message_array.length];
         for(int i=0; i<bitArrays.length; i++){
@@ -372,7 +372,7 @@ public class DES {
         return bitSets;
     }
 
-    public static BitSet[] base64strings_to_bitsets(String message){//解密时调用
+    public static BitSet[] base64strings_to_bitsets(String message){
         byte[] message_bytes = Base64.decode(message);
         int size = message_bytes.length/8;
         byte[][] result_bytes;
@@ -418,7 +418,7 @@ public class DES {
         return bitSets;
     }
 
-    public static String bitsets_to_base64string(BitSet[] bitSets){//加密时调用
+    public static String bitsets_to_base64string(BitSet[] bitSets){
         //System.out.println(bitSets[0].length());//64
         //System.out.println(bitSets[1].length());//62
         BitArray[] result_bitArrays = new BitArray[bitSets.length];
@@ -449,7 +449,7 @@ public class DES {
         return base64;
     }
 
-    public static String bitsets_to_string(BitSet[] bitSets){//解密时调用
+    public static String bitsets_to_string(BitSet[] bitSets){
         //System.out.println(bitSets[0].length());//64
         //System.out.println(bitSets[1].length());//62
         BitArray[] result_bitArrays = new BitArray[bitSets.length];
@@ -490,10 +490,10 @@ public class DES {
         message = Base64.encode(message.getBytes());
         //System.out.println("原文经过base64编码："+message);
         //System.out.println("原文经过base64编码再转回："+ new String(Base64.decode(message)));
-        String[] message_array = DES.split(message);
+        //String[] message_array = DES.split(message);     //因为已经不使用Stirng_to_bitset(String[] array)，所以也不需要此split函数了
         //把String[] 转换成 2进制 的BitSet数组
-        BitSet[] M_bitSets = strings_to_bitsets(message_array);
-        BitSet[] C_bitSets = new BitSet[message_array.length];
+        BitSet[] M_bitSets = base64strings_to_bitsets(message);
+        BitSet[] C_bitSets = new BitSet[M_bitSets.length];
         for(int i=0; i<C_bitSets.length; i++){
             C_bitSets[i] = Encrypt(M_bitSets[i],0);
             //System.out.println(C_bitSets[i]);
@@ -507,10 +507,11 @@ public class DES {
         for(int i=0; i<C_bitSets.length; i++){
             M_bitSets[i] = Encrypt(C_bitSets[i],1);
         }
-        String result = bitsets_to_string(M_bitSets);
+        String result = bitsets_to_base64string(M_bitSets);
+        /*  //由于已经不使用bitsets_to_string(BitSet[] bitsets)，所以也不需要此剔除过程，因为在bitsets_to_base64string()函数过程中已经处理了byte[]中是空的数据
         if(result.indexOf(0) >=0){
             result = result.substring(0,result.indexOf(0));    //这一步很重要，由于在result中含有ascll码为0的值，导致转换为byte[]时出错，所以要先剔除掉0
-        }
+        }*/
         return new String(Base64.decode(result));
     }
 
